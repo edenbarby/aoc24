@@ -1,0 +1,17 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Launch and Debug",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=aoc24"
+                ]
+            },
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
