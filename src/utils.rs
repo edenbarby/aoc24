@@ -1,4 +1,4 @@
-use std::fs::read_to_string;
+use std::{fs::read_to_string, str::Lines};
 
 pub fn extract_ints_from_string(s: &str) -> Vec<i32> {
     s.split(" ")

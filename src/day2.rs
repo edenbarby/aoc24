@@ -1,6 +1,5 @@
 use crate::utils::*;
-use core::num;
-use std::{fs::read_to_string, i32, iter::zip};
+use std::{fs::read_to_string, iter::zip};
 
 pub fn day2_part1() {
     let filename = "input/02/input_1.txt";
@@ -47,6 +46,20 @@ pub fn day2_part1() {
 
     println!("day2_part1: {}", sum);
 }
+
+// fn is_safe(readings: Vec<i32>) -> bool {
+//     if readings.len() > 0 {
+//         let last_reading = readings[0];
+//         let mut increasing = true;
+//         let mut decreasing = true;
+//         let mut diff_min = u32
+//         for reading in readings {
+//             if !(reading > last_reading) {
+
+//             }
+//         }
+//     }
+// }
 
 pub fn day2_part2() {
     let filename = "input/02/input_1.txt";
