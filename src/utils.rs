@@ -31,3 +31,11 @@ pub fn load_pair_of_columns(filename: &str) -> (Vec<i32>, Vec<i32>) {
 
     (input_left, input_right)
 }
+
+pub fn seperate_string_into_numbers(string: &str, seperator: &str) -> Vec<i32> {
+    string
+        .trim()
+        .split(seperator)
+        .map_while(|t| t.parse::<i32>().ok())
+        .collect()
+}
