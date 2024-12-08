@@ -1,59 +1,56 @@
 use crate::utils::*;
 use std::{
+    cmp::Ordering,
     collections::{HashMap, HashSet},
     fs::read_to_string,
 };
 
-enum RuleCheckState {
-    FoundNothing,
-    FoundFirst,
-    FoundSecond,
+// enum RuleCheckState {
+//     FoundNothing,
+//     FoundFirst,
+//     FoundSecond,
+// }
+
+fn load_input(input_file_path: &str) -> (Vec<(i32, i32)>, Vec<Vec<i32>>) {
+    let mut rules = Vec::new();
+    let mut updates = Vec::new();
+
+    let file_contents = read_to_string(input_file_path).unwrap();
+    let mut lines_iter = file_contents.trim().lines();
+
+    loop {
+        match lines_iter.next() {
+            Some(line) => {
+                let values = seperate_string_into_numbers(line, "|");
+
+                match values.len() {
+                    0 => break,
+                    2 => rules.push((values[0], values[1])),
+                    _ => panic!("bad line {}", line),
+                }
+            }
+            None => panic!("reached EOF before update list"),
+        }
+    }
+
+    for line in lines_iter {
+        let values = seperate_string_into_numbers(line, ",");
+        if !values.is_empty() {
+            if values.len() % 2 == 1 {
+                updates.push(values);
+            } else {
+                panic!("bad update page len {}", line);
+            }
+        }
+    }
+
+    (rules, updates)
 }
 
 pub fn part1() {
     let file_path = "input/05/input1.txt";
 
-    let mut rules = Vec::new();
-    let mut updates = Vec::new();
-    {
-        let file_contents = read_to_string(file_path).unwrap();
-        let mut lines_iter = file_contents.trim().lines();
-        loop {
-            match lines_iter.next() {
-                Some(line) => {
-                    let values = seperate_string_into_numbers(line, "|");
-                    // let tokens: Vec<&str> = line
-                    //     .trim()
-                    //     .split("|")
-                    //     .skip_while(|t| t.len() == 0)
-                    //     .collect();
-
-                    match values.len() {
-                        0 => break,
-                        2 => rules.push((values[0], values[1])),
-                        _ => panic!("bad line {}", line),
-                    }
-                }
-                None => panic!("reach EOF before update list"),
-            }
-        }
-
-        loop {
-            match lines_iter.next() {
-                Some(line) => {
-                    let values = seperate_string_into_numbers(line, ",");
-                    if values.len() > 0 {
-                        if values.len() % 2 == 1 {
-                            updates.push(values);
-                        } else {
-                            panic!("bad update page len {}", line);
-                        }
-                    }
-                }
-                None => break,
-            }
-        }
-    }
+    let (rules, updates) = load_input(file_path);
 
     for (a, b) in &rules {
         println!("{}|{}", a, b);
@@ -90,30 +87,24 @@ pub fn part1() {
         for page in update {
             unvisited_pages.remove(page);
 
-            match rules_map_after.get(page) {
-                Some(future_pages) => {
-                    for future_page in future_pages {
-                        if visited_pages.contains(future_page) {
-                            rule_violation = true;
-                            println!("1 violation {}|{}", page, future_page);
-                            break;
-                        }
+            if let Some(future_pages) = rules_map_after.get(page) {
+                for future_page in future_pages {
+                    if visited_pages.contains(future_page) {
+                        rule_violation = true;
+                        println!("1 violation {}|{}", page, future_page);
+                        break;
                     }
                 }
-                None => {}
             }
 
-            match rules_map_before.get(page) {
-                Some(past_pages) => {
-                    for past_page in past_pages {
-                        if unvisited_pages.contains(past_page) {
-                            rule_violation = true;
-                            println!("2 violation {}|{}", past_page, page);
-                            break;
-                        }
+            if let Some(past_pages) = rules_map_before.get(page) {
+                for past_page in past_pages {
+                    if unvisited_pages.contains(past_page) {
+                        rule_violation = true;
+                        println!("2 violation {}|{}", past_page, page);
+                        break;
                     }
                 }
-                None => {}
             }
 
             visited_pages.insert(page);
@@ -124,7 +115,7 @@ pub fn part1() {
         }
 
         if !rule_violation {
-            let midpoint = (update.len() >> 2) + 1;
+            let midpoint = update.len() / 2;
             sum += update[midpoint];
             println!("good!");
         } else {
@@ -177,7 +168,7 @@ pub fn part1() {
     //     }
 
     //     if !rules_violated {
-    //         let midpoint = (pages.len() >> 2) + 1;
+    //         let midpoint = pages.len() / 2;
     //         sum += pages[midpoint];
     //         println!("good!");
     //     } else {
@@ -186,4 +177,59 @@ pub fn part1() {
     // }
 
     println!("day 5 part 1: {}", sum);
+}
+
+type PageOrderRules = HashMap<i32, HashSet<i32>>;
+
+fn is_update_valid(pages: &[i32], order: &PageOrderRules) -> bool {
+    let mut previous = HashSet::new();
+
+    for &page in pages {
+        if let Some(pages_that_should_come_after) = order.get(&page) {
+            if !previous.is_disjoint(pages_that_should_come_after) {
+                return false;
+            }
+        }
+
+        previous.insert(page);
+    }
+
+    true
+}
+
+fn compare(first_page: i32, second_page: i32, order: &PageOrderRules) -> Ordering {
+    if let Some(pages_that_should_come_after) = order.get(&first_page) {
+        if pages_that_should_come_after.contains(&second_page) {
+            return Ordering::Less;
+        }
+    }
+    if let Some(pages_that_should_come_after) = order.get(&second_page) {
+        if pages_that_should_come_after.contains(&first_page) {
+            return Ordering::Greater;
+        }
+    }
+    Ordering::Equal
+}
+
+pub fn part2() {
+    let input_file_path = "input/05/input1.txt";
+    let (rules, updates) = load_input(input_file_path);
+
+    let mut rule_map_after: PageOrderRules = HashMap::new();
+    for r in rules {
+        rule_map_after.entry(r.0).or_default().insert(r.1);
+    }
+
+    let mut sum = 0;
+
+    for update in updates {
+        if !is_update_valid(&update, &rule_map_after) {
+            let mut corrected_update = update;
+            corrected_update.sort_by(|&a, &b| compare(a, b, &rule_map_after));
+
+            sum += corrected_update[corrected_update.len() / 2];
+        }
+    }
+
+    println!("day 5 part 2: {}", sum);
 }
