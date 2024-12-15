@@ -1,4 +1,4 @@
-use std::{fs::read_to_string, thread};
+use std::{fs::read_to_string, iter, thread};
 
 type Stones = Vec<u64>;
 
@@ -13,7 +13,7 @@ fn load_stones(path: &str) -> Stones {
         .split(' ')
         .map_while(|t| t.parse::<u64>().ok())
         .collect::<Stones>();
-    assert!(stones.len() > 0);
+    assert!(!stones.is_empty());
     stones
 }
 
@@ -28,7 +28,7 @@ pub fn part1() {
     let mut stones = load_stones("input/11/input.txt");
     // display_stones(&stones);
 
-    for _i in 0..30 {
+    for _i in 0..25 {
         let mut new_stones = Vec::new();
         for stone in stones {
             if stone == 0 {
@@ -56,58 +56,131 @@ pub fn part1() {
     println!("day 11 part 1: {}", stones.len());
 }
 
-fn count_digits(mut x: u64) -> u64 {
-    let mut digit_count = 0;
-    loop {
-        match x {
-            0..10 => return digit_count + 1,
-            10..100 => return digit_count + 2,
-            100..1000 => return digit_count + 3,
-            1000..10000 => return digit_count + 4,
-            10000..100000 => return digit_count + 5,
-            100000..1000000 => return digit_count + 6,
-            1000000..10000000 => return digit_count + 7,
-            _ => {
-                x /= 10000000;
-                digit_count += 7;
-            }
-        }
+// fn count_digits(mut x: u64) -> u64 {
+//     let mut digit_count = 0;
+//     loop {
+//         match x {
+//             0..10 => return digit_count + 1,
+//             10..100 => return digit_count + 2,
+//             100..1000 => return digit_count + 3,
+//             1000..10000 => return digit_count + 4,
+//             10000..100000 => return digit_count + 5,
+//             100000..1000000 => return digit_count + 6,
+//             1000000..10000000 => return digit_count + 7,
+//             _ => {
+//                 x /= 10000000;
+//                 digit_count += 7;
+//             }
+//         }
+//     }
+// }
+
+fn count_digits(x: u64) -> u64 {
+    match x {
+        0..10 => 1,
+        10..100 => 2,
+        100..1000 => 3,
+        1000..10000 => 4,
+        10000..100000 => 5,
+        100000..1000000 => 6,
+        1000000..10000000 => 7,
+        _ => (x as f32).log10().ceil() as u64,
     }
 }
 
-fn split_digits(x: u64, count: u64) -> Vec<u64> {
-    // assert!(count % 2 == 0);
+// fn split_digits(x: u64, count: u64) -> Vec<u64> {
+//     // assert!(count % 2 == 0);
+//     let shift = 10u64.pow((count / 2) as u32);
+//     let left = x / shift;
+//     vec![left, x - (left * shift)]
+// }
+
+fn split_digits(x: u64, count: u64, stones: &mut Vec<u64>) {
     let shift = 10u64.pow((count / 2) as u32);
     let left = x / shift;
-    vec![left, x - (left * shift)]
+    stones.push(left);
+    stones.push(x - (left * shift));
 }
 
-fn mutate_stone(x: u64) -> Vec<u64> {
+// fn mutate_stone(x: u64) -> Vec<u64> {
+//     if x == 0 {
+//         vec![1]
+//     } else {
+//         let digits = count_digits(x);
+//         if digits % 2 == 0 {
+//             split_digits(x, digits)
+//         } else {
+//             vec![x * 2024]
+//         }
+//     }
+// }
+
+fn mutate_stone(x: u64, stones: &mut Vec<u64>) {
     if x == 0 {
-        return vec![1];
+        stones.push(x);
     } else {
         let digits = count_digits(x);
         if digits % 2 == 0 {
-            return split_digits(x, digits);
+            split_digits(x, digits, stones);
         } else {
-            return vec![x * 2024];
+            stones.push(x * 2024);
         }
     }
 }
 
+// fn mutate_stones(stones: &Stones) -> Stones {
+//     stones
+//         .iter()
+//         .flat_map(|&s| mutate_stone(s))
+//         .collect::<Stones>()
+// }
+
 fn mutate_stones(stones: &Stones) -> Stones {
-    stones
-        .iter()
-        .flat_map(|&s| mutate_stone(s))
-        .collect::<Stones>()
+    let mut new_stones = Vec::with_capacity(stones.len());
+
+    for &stone in stones {
+        mutate_stone(stone, &mut new_stones);
+    }
+
+    new_stones
 }
 
-fn count_stones(mut stones: Stones, iterations: usize, _worked_id: usize) -> usize {
+// fn count_stones(mut stones: Stones, iterations: usize, _worker_id: usize) -> usize {
+//     for _i in 0..iterations {
+//         stones = mutate_stones(&stones);
+
+//         println!(
+//             "{:03} -> {:02}/{:02} {}",
+//             _worker_id,
+//             _i + 1,
+//             iterations,
+//             stones.len()
+//         );
+//     }
+
+//     stones.len()
+// }
+
+fn count_stones(mut stones: Stones, iterations: usize, _worker_id: usize) -> usize {
     for _i in 0..iterations {
         stones = mutate_stones(&stones);
 
-        // println!("{:03} -> {} {}", worked_id_, _i + 1, stones.len());
+        println!(
+            "{:03} -> {:02}/{:02} {}",
+            _worker_id,
+            _i + 1,
+            iterations,
+            stones.len()
+        );
     }
+
+    let mut max = 0;
+    for &s in stones.iter() {
+        if s > max {
+            max = s;
+        }
+    }
+    println!("max: {}", max);
 
     stones.len()
 }
@@ -122,48 +195,53 @@ pub fn part2() {
     assert_eq!(count_digits(320000011230310), 15);
     assert_eq!(count_digits(300000112331652310), 18);
 
-    assert_eq!(split_digits(13, 2), vec![1, 3]);
-    assert_eq!(split_digits(3310, 4), vec![33, 10]);
-    assert_eq!(split_digits(3200230310, 10), vec![32002, 30310]);
-    assert_eq!(
-        split_digits(300000112331652310, 18),
-        vec![300000112, 331652310]
-    );
+    // assert_eq!(split_digits(13, 2), vec![1, 3]);
+    // assert_eq!(split_digits(3310, 4), vec![33, 10]);
+    // assert_eq!(split_digits(3200230310, 10), vec![32002, 30310]);
+    // assert_eq!(
+    //     split_digits(300000112331652310, 18),
+    //     vec![300000112, 331652310]
+    // );
 
-    assert_eq!(mutate_stone(0), vec![1]);
-    assert_eq!(mutate_stone(1), vec![2024]);
-    assert_eq!(mutate_stone(13), vec![1, 3]);
-    assert_eq!(mutate_stone(331), vec![331 * 2024]);
-    assert_eq!(mutate_stone(3310), vec![33, 10]);
-    assert_eq!(mutate_stone(3200230310), vec![32002, 30310]);
-    assert_eq!(mutate_stone(320000011230310), vec![320000011230310 * 2024]);
-    assert_eq!(mutate_stone(300000112331652310), vec![300000112, 331652310]);
+    // assert_eq!(mutate_stone(0), vec![1]);
+    // assert_eq!(mutate_stone(1), vec![2024]);
+    // assert_eq!(mutate_stone(13), vec![1, 3]);
+    // assert_eq!(mutate_stone(331), vec![331 * 2024]);
+    // assert_eq!(mutate_stone(3310), vec![33, 10]);
+    // assert_eq!(mutate_stone(3200230310), vec![32002, 30310]);
+    // assert_eq!(mutate_stone(320000011230310), vec![320000011230310 * 2024]);
+    // assert_eq!(mutate_stone(300000112331652310), vec![300000112, 331652310]);
 
-    let mut iterations = 30;
-    let mut stones = load_stones("input/11/input.txt");
+    let iterations = 40;
+    let stones = load_stones("input/11/input.txt");
 
-    let thread_count = 12;
-    while stones.len() < 3 * thread_count {
-        iterations -= 1;
-        stones = mutate_stones(&stones);
-    }
-    let stones_per_worker = stones.len() / thread_count;
+    println!("day 11 part 2: {}", count_stones(stones, iterations, 0));
 
-    let worker_handles = stones
-        .chunks(stones_per_worker)
-        .enumerate()
-        .map(|(i, s)| {
-            // println!("{:03} -> starting with {} stones!", i, s.len());
-            let v = s.to_vec();
-            thread::spawn(move || count_stones(v, iterations, i))
-        })
-        .collect::<Vec<_>>();
+    // let mut iterations = 75;
+    // let mut stones = load_stones("input/11/input.txt");
 
-    println!(
-        "day 11 part 2: {}",
-        worker_handles
-            .into_iter()
-            .map(|w| w.join().unwrap())
-            .sum::<usize>()
-    );
+    // let thread_count = 4;
+    // while stones.len() < 3 * thread_count {
+    //     iterations -= 1;
+    //     stones = mutate_stones(&stones);
+    // }
+    // let stones_per_worker = stones.len() / thread_count;
+
+    // let worker_handles = stones
+    //     .chunks(stones_per_worker)
+    //     .enumerate()
+    //     .map(|(i, s)| {
+    //         // println!("{:03} -> starting with {} stones!", i, s.len());
+    //         let v = s.to_vec();
+    //         thread::spawn(move || count_stones_2(v, iterations, i))
+    //     })
+    //     .collect::<Vec<_>>();
+
+    // println!(
+    //     "day 11 part 2: {}",
+    //     worker_handles
+    //         .into_iter()
+    //         .map(|w| w.join().unwrap())
+    //         .sum::<usize>()
+    // );
 }
