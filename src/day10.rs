@@ -47,7 +47,7 @@ fn in_bounds(bounds: &Bounds, point: &Point) -> bool {
     bounds.0.contains(&point.0) && bounds.1.contains(&point.1)
 }
 
-fn adjacent_4(point: &Point) -> [Point; 4] {
+fn adjacent_points(point: &Point) -> [Point; 4] {
     [
         (point.0 - 1, point.1),
         (point.0, point.1 - 1),
@@ -89,7 +89,7 @@ pub fn part1() {
 
                 match height {
                     0..=8 => {
-                        adjacent_4(&current_tile)
+                        adjacent_points(&current_tile)
                             .iter()
                             .filter(|&p| in_bounds(&bounds, p))
                             .filter(|&p| index_map(&map, p) == (height + 1))
@@ -120,4 +120,49 @@ pub fn part1() {
     println!("day 10 part 1: {}", sum);
 }
 
-pub fn part2() {}
+fn valid_next_points(map: &Map, bounds: &Bounds, height: i8, point: &Point) -> Vec<Point> {
+    [
+        (point.0 - 1, point.1),
+        (point.0, point.1 - 1),
+        (point.0 + 1, point.1),
+        (point.0, point.1 + 1),
+    ]
+    .iter()
+    .filter(|p| in_bounds(&bounds, *p))
+    .filter(|p| index_map(&map, *p) == (height + 1))
+    .cloned()
+    .collect::<Vec<_>>()
+}
+
+fn depth_first_trail_search(map: &Map, bounds: &Bounds, current_position: &Point) -> i64 {
+    let current_height = index_map(map, current_position);
+
+    match current_height {
+        0..=8 => valid_next_points(map, bounds, current_height, current_position)
+            .iter()
+            .map(|p| depth_first_trail_search(map, bounds, p))
+            .sum(),
+        9 => 1,
+        _ => panic!(),
+    }
+}
+
+pub fn part2() {
+    let (map, bounds) = load_map("input/10/input.txt");
+
+    let mut trail_heads = Vec::new();
+    for (i, row) in map.iter().enumerate() {
+        for (j, &c) in row.iter().enumerate() {
+            if c == 0 {
+                trail_heads.push((i as i64, j as i64));
+            }
+        }
+    }
+
+    let sum: i64 = trail_heads
+        .iter()
+        .map(|p| depth_first_trail_search(&map, &bounds, p))
+        .sum();
+
+    println!("day 10 part 2: {}", sum);
+}
